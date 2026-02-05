@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid()) @db.Uuid
+  deviceId  String    @unique @map("device_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  accounts  Account[]
+
+  @@map("users")
+}
+
+model Account {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assets    Asset[]
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+enum AssetType {
+  GOLD
+  STOCK
+  CRYPTO
+  REAL_ESTATE
+  OTHER
+}
+
+enum NotificationDirection {
+  UP
+  DOWN
+}
+
+model Asset {
+  id                String             @id @default(uuid()) @db.Uuid
+  accountId         String             @map("account_id") @db.Uuid
+  type              AssetType
+  symbol            String?
+  quantity          Decimal            @db.Decimal(18, 8)
+  buyPrice          Decimal            @map("buy_price") @db.Decimal(18, 8)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  account           Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  priceHistory      AssetPriceHistory[]
+  notificationRules NotificationRule[]
+
+  @@index([accountId])
+  @@index([type])
+  @@map("assets")
+}
+
+model AssetPriceHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  assetId    String   @map("asset_id") @db.Uuid
+  price      Decimal  @db.Decimal(18, 8)
+  recordedAt DateTime @default(now()) @map("recorded_at")
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, recordedAt])
+  @@map("asset_price_history")
+}
+
+model NotificationRule {
+  id               String                @id @default(uuid()) @db.Uuid
+  assetId          String                @map("asset_id") @db.Uuid
+  thresholdPercent Int                   @map("threshold_percent")
+  direction        NotificationDirection
+  triggered        Boolean               @default(false)
+  lastTriggeredAt  DateTime?             @map("last_triggered_at")
+  asset            Asset                 @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("notification_rules")
+}
