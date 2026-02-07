@@ -41,3 +41,9 @@ export class ExternalApiError extends AppError {
     super(`External API error from ${service}: ${originalError || 'Unknown error'}`, 502, 'EXTERNAL_API_ERROR');
   }
 }
+
+export class DatabaseError extends AppError {
+  constructor(message: string = 'Database operation failed') {
+    super(message, 500, 'DATABASE_ERROR');
+  }
+}

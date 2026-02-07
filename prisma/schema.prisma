@@ -49,6 +49,15 @@ model Asset {
   quantity          Decimal            @db.Decimal(18, 8)
   buyPrice          Decimal            @map("buy_price") @db.Decimal(18, 8)
   createdAt         DateTime           @default(now()) @map("created_at")
+  
+  // Real Estate specific fields (optional, only for REAL_ESTATE type)
+  location          String?            @map("location")           // Address/location
+  area              Decimal?           @map("area") @db.Decimal(10, 2)  // Square meters
+  propertyType      String?            @map("property_type")      // apartment, land, villa, commercial
+  currentValuation  Decimal?           @map("current_valuation") @db.Decimal(18, 2)  // Manual current value
+  rentalIncome      Decimal?           @map("rental_income") @db.Decimal(18, 2)      // Monthly rental income
+  notes             String?            @map("notes")              // Additional notes
+  
   account           Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
   priceHistory      AssetPriceHistory[]
   notificationRules NotificationRule[]

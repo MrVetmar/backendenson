@@ -15,7 +15,20 @@ async function postHandler(request: NextRequest) {
     throw new ValidationError(parseResult.error.errors[0].message);
   }
 
-  const { accountId, type, symbol, quantity, buyPrice } = parseResult.data;
+  const {
+    accountId,
+    type,
+    symbol,
+    quantity,
+    buyPrice,
+    // Real estate fields
+    location,
+    area,
+    propertyType,
+    currentValuation,
+    rentalIncome,
+    notes,
+  } = parseResult.data;
 
   const account = await prisma.account.findFirst({
     where: {
@@ -35,6 +48,15 @@ async function postHandler(request: NextRequest) {
       symbol: symbol || null,
       quantity,
       buyPrice,
+      // Only save real estate fields if type is REAL_ESTATE
+      ...(type === 'REAL_ESTATE' && {
+        location: location || null,
+        area: area || null,
+        propertyType: propertyType || null,
+        currentValuation: currentValuation || null,
+        rentalIncome: rentalIncome || null,
+        notes: notes || null,
+      }),
     },
     select: {
       id: true,
@@ -44,13 +66,33 @@ async function postHandler(request: NextRequest) {
       quantity: true,
       buyPrice: true,
       createdAt: true,
+      // Real estate fields
+      location: true,
+      area: true,
+      propertyType: true,
+      currentValuation: true,
+      rentalIncome: true,
+      notes: true,
     },
   });
 
   return createResponse({
-    ...asset,
+    id: asset.id,
+    accountId: asset.accountId,
+    type: asset.type,
+    symbol: asset.symbol,
     quantity: Number(asset.quantity),
     buyPrice: Number(asset.buyPrice),
+    createdAt: asset.createdAt,
+    // Real estate fields (only if present)
+    ...(asset.type === 'REAL_ESTATE' && {
+      location: asset.location,
+      area: asset.area ? Number(asset.area) : null,
+      propertyType: asset.propertyType,
+      currentValuation: asset.currentValuation ? Number(asset.currentValuation) : null,
+      rentalIncome: asset.rentalIncome ? Number(asset.rentalIncome) : null,
+      notes: asset.notes,
+    }),
   }, 201);
 }
 
@@ -87,18 +129,21 @@ async function getHandler(request: NextRequest) {
 
   const priceMap = await getBatchPrices(priceInputs);
 
-  const enrichedAssets: PortfolioAsset[] = assets.map(asset => {
+  const enrichedAssets = assets.map(asset => {
     const key = `${asset.type}:${asset.symbol || 'null'}`;
     const priceResult = priceMap.get(key);
-    
+
     const quantity = Number(asset.quantity);
     const buyPrice = Number(asset.buyPrice);
     const totalInvested = quantity * buyPrice;
-    
+
     let currentPrice = buyPrice;
     let priceError: string | null = null;
 
-    if (priceResult) {
+    // For REAL_ESTATE, use currentValuation if available
+    if (asset.type === 'REAL_ESTATE' && asset.currentValuation) {
+      currentPrice = Number(asset.currentValuation);
+    } else if (priceResult) {
       if (isPriceError(priceResult)) {
         priceError = priceResult.error;
       } else {
@@ -125,6 +170,15 @@ async function getHandler(request: NextRequest) {
       profitLossPercent: Math.round(profitLossPercent * 100) / 100,
       priceError,
       createdAt: asset.createdAt,
+      // Real estate specific fields
+      ...(asset.type === 'REAL_ESTATE' && {
+        location: asset.location,
+        area: asset.area ? Number(asset.area) : null,
+        propertyType: asset.propertyType,
+        currentValuation: asset.currentValuation ? Number(asset.currentValuation) : null,
+        rentalIncome: asset.rentalIncome ? Number(asset.rentalIncome) : null,
+        notes: asset.notes,
+      }),
     };
   });
 
