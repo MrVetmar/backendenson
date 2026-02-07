@@ -129,6 +129,14 @@ async function getHandler(request: NextRequest) {
 
   const priceMap = await getBatchPrices(priceInputs);
 
+  console.log('=== PRICE FETCH COMPLETE ===');
+  console.log('Price inputs:', priceInputs);
+  console.log('Price map entries:', Array.from(priceMap.entries()).map(([k, v]) => ({
+    key: k,
+    price: 'price' in v ? v.price : null,
+    error: 'error' in v ? v.error : null
+  })));
+
   const enrichedAssets = assets.map(asset => {
     const key = `${asset.type}:${asset.symbol || 'null'}`;
     const priceResult = priceMap.get(key);

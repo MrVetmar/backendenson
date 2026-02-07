@@ -49,6 +49,8 @@ export async function getCryptoPrice(symbol: string): Promise<PriceResult> {
   const normalizedSymbol = symbol.toUpperCase();
   const coinId = CRYPTO_ID_MAP[normalizedSymbol] || normalizedSymbol.toLowerCase();
 
+  console.log('CRYPTO PRICE FETCH START:', { symbol: normalizedSymbol, coinId });
+
   try {
     const response = await fetchWithTimeout(
       `${COINGECKO_BASE}/simple/price?ids=${coinId}&vs_currencies=usd&include_last_updated_at=true`
@@ -59,8 +61,10 @@ export async function getCryptoPrice(symbol: string): Promise<PriceResult> {
     }
 
     const data = await response.json();
+    console.log('CRYPTO API RESPONSE:', { coinId, data: data[coinId] || 'NOT_FOUND' });
 
     if (!data[coinId]) {
+      console.log('CRYPTO PRICE ERROR: No data for', normalizedSymbol);
       return {
         symbol: normalizedSymbol,
         error: `Price data not found for ${normalizedSymbol}`,
@@ -77,6 +81,7 @@ export async function getCryptoPrice(symbol: string): Promise<PriceResult> {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.log('CRYPTO PRICE EXCEPTION:', { symbol: normalizedSymbol, error: message });
     return {
       symbol: normalizedSymbol,
       error: message,
@@ -89,7 +94,10 @@ export async function getGoldPrice(symbol: string): Promise<PriceResult> {
   const normalizedSymbol = GOLD_SYMBOL_MAP[symbol.toUpperCase()] || 'XAU';
   const apiKey = process.env.GOLDAPI_KEY;
 
+  console.log('GOLD PRICE FETCH START:', { symbol: normalizedSymbol, apiKey: apiKey ? 'SET' : 'MISSING' });
+
   if (!apiKey) {
+    console.log('GOLD PRICE ERROR: API key not configured');
     return {
       symbol: normalizedSymbol,
       error: 'GoldAPI key not configured',
@@ -113,8 +121,10 @@ export async function getGoldPrice(symbol: string): Promise<PriceResult> {
     }
 
     const data = await response.json();
+    console.log('GOLD API RESPONSE:', { symbol: normalizedSymbol, price: data.price, error: data.error });
 
     if (data.error) {
+      console.log('GOLD PRICE ERROR:', data.error);
       return {
         symbol: normalizedSymbol,
         error: data.error,
@@ -131,6 +141,7 @@ export async function getGoldPrice(symbol: string): Promise<PriceResult> {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.log('GOLD PRICE EXCEPTION:', { symbol: normalizedSymbol, error: message });
     return {
       symbol: normalizedSymbol,
       error: message,
@@ -143,7 +154,10 @@ export async function getStockPrice(symbol: string): Promise<PriceResult> {
   const normalizedSymbol = symbol.toUpperCase();
   const apiKey = process.env.FINNHUB_API_KEY;
 
+  console.log('STOCK PRICE FETCH START:', { symbol: normalizedSymbol, apiKey: apiKey ? 'SET' : 'MISSING' });
+
   if (!apiKey) {
+    console.log('STOCK PRICE ERROR: API key not configured');
     return {
       symbol: normalizedSymbol,
       error: 'Finnhub API key not configured',
@@ -161,8 +175,10 @@ export async function getStockPrice(symbol: string): Promise<PriceResult> {
     }
 
     const data = await response.json();
+    console.log('STOCK API RESPONSE:', { symbol: normalizedSymbol, currentPrice: data.c, data });
 
     if (!data.c || data.c === 0) {
+      console.log('STOCK PRICE ERROR: No data for', normalizedSymbol);
       return {
         symbol: normalizedSymbol,
         error: `No price data available for ${normalizedSymbol}`,
@@ -179,6 +195,7 @@ export async function getStockPrice(symbol: string): Promise<PriceResult> {
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    console.log('STOCK PRICE EXCEPTION:', { symbol: normalizedSymbol, error: message });
     return {
       symbol: normalizedSymbol,
       error: message,
@@ -259,7 +276,7 @@ export async function getBatchPrices(
       (async () => {
         const uniqueSymbols = Array.from(new Set(cryptoSymbols));
         const coinIds = uniqueSymbols.map(s => CRYPTO_ID_MAP[s.toUpperCase()] || s.toLowerCase());
-        
+
         try {
           const response = await fetchWithTimeout(
             `${COINGECKO_BASE}/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_last_updated_at=true`
@@ -267,11 +284,11 @@ export async function getBatchPrices(
 
           if (response.ok) {
             const data = await response.json();
-            
+
             for (const symbol of uniqueSymbols) {
               const coinId = CRYPTO_ID_MAP[symbol.toUpperCase()] || symbol.toLowerCase();
               const key = `CRYPTO:${symbol}`;
-              
+
               if (data[coinId]) {
                 results.set(key, {
                   symbol: symbol.toUpperCase(),
